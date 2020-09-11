@@ -46,8 +46,8 @@ net/ipv4/tcp_congestion_control=bbr
 ```
 ## 安装GO环境
 ```
-wget -c https://golang.org/dl/go1.15.1.linux-amd64.tar.gz
-tar xf go1.15.1.linux-amd64.tar.gz
+wget -c https://golang.org/dl/go1.15.2.linux-amd64.tar.gz
+tar xf go1.15.2.linux-amd64.tar.gz
 sudo mv go /usr/local/
 sudo ln -snf /usr/local/go/bin/* /usr/local/bin/
 go version
@@ -170,6 +170,8 @@ WantedBy=multi-user.target
 #### 生成UUID,记住它，下面要用
 ```
 cat /proc/sys/kernel/random/uuid
+\\ 或者
+v2ctl uuid
 ```
 #### 创建V2ray配置文件
 ```
@@ -221,7 +223,7 @@ sudo nano /opt/v2ray/config.json
     {
       "protocol": "blackhole",
       "settings": { },
-      "tag": "blocked"
+      "tag": "block"
     }
   ],
   "dns": {
