@@ -46,8 +46,8 @@ net/ipv4/tcp_congestion_control=bbr
 ```
 ## 安装GO环境
 ```
-wget -c https://golang.org/dl/go1.15.2.linux-amd64.tar.gz
-tar xf go1.15.2.linux-amd64.tar.gz
+wget -c https://golang.org/dl/go1.15.6.linux-amd64.tar.gz
+tar xf go1.15.6.linux-amd64.tar.gz
 sudo mv go /usr/local/
 sudo ln -snf /usr/local/go/bin/* /usr/local/bin/
 go version
@@ -153,6 +153,25 @@ sudo nano /etc/systemd/system/v2ray.service
 ```
 [Unit]
 Description=V2Ray Service
+Documentation=https://www.v2fly.org/
+After=network.target nss-lookup.target
+
+[Service]
+User=caddy
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ExecStart=/usr/local/bin/v2ray -config /opt/v2ray/config.json
+Restart=on-failure
+RestartPreventExitStatus=23
+
+[Install]
+WantedBy=multi-user.target
+```
+或者
+```
+[Unit]
+Description=V2Ray Service
 After=network.target
 Wants=network.target
 
@@ -181,14 +200,12 @@ sudo nano /opt/v2ray/config.json
 ###### 加入以下内容：
 ```
 {
+  "log": {"loglevel": "none"},
   "inbounds": [
     {
       "sniffing": {
         "enabled": true,
-        "destOverride": [
-          "http",
-          "tls"
-        ]
+        "destOverride": ["http","tls"]
       },
       "port": "8443",
       "listen": "127.0.0.1",
@@ -196,20 +213,17 @@ sudo nano /opt/v2ray/config.json
       "protocol": "vmess",
       "settings": {
         "clients": [
-          {
-            "id": "xxx-xxxxx-xxxxx-xxxxx-xxxx",
-            "alterId": 32
-          }
+          {"id": "$UUID","alterId": 0},
+          {"id": "$UUID","alterId": 0},
+          {"id": "$UUID","alterId": 0}
         ]
       },
       "streamSettings": {
         "network": "h2",
         "security": "none",
         "httpSettings": {
-          "path": "/xxx.html",
-          "host": [
-            "xxx.com"
-          ]
+          "path": "/xxx?xx=xxx",
+          "host": ["daemon.com"]
         }
       }
     }
@@ -217,12 +231,12 @@ sudo nano /opt/v2ray/config.json
   "outbounds": [
     {
       "protocol": "freedom",
-      "settings": { },
+      "settings": {},
       "tag": "direct"
     },
     {
       "protocol": "blackhole",
-      "settings": { },
+      "settings": {},
       "tag": "block"
     }
   ],
@@ -237,17 +251,13 @@ sudo nano /opt/v2ray/config.json
     "rules": [
       {
         "type": "field",
-        "inboundTag": [
-          "vmess-in"
-        ],
+        "inboundTag": ["vmess-in"],
         "outboundTag": "direct"
       },
       {
         "type": "field",
         "outboundTag": "block",
-        "protocol": [
-          "bittorrent"
-        ]
+        "protocol": ["bittorrent"]
       }
     ]
   }

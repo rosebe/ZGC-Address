@@ -1,0 +1,57 @@
+{
+  "log": {"loglevel": "none"},
+  "inbounds": [{
+    "sniffing": {
+      "enabled": true,
+      "destOverride": ["http","tls"]
+    },
+    "port": "10443",
+    "listen": "127.0.0.1",
+    "tag": "vmess-in",
+    "protocol": "vmess",
+    "settings": {
+      "clients": [
+        {"id": "$uuid","alterId": 0}, //$uuid自己替换
+        {"id": "$uuid","alterId": 0}  //$uuid自己替换
+      ]
+    },
+    "streamSettings": {
+      "network": "h2",
+      "security": "none",
+      "httpSettings": {
+        "path": "/v2ray?id=v2ray", //path路径
+        "host": ["daemon.com"] //你的域名
+      }
+    }
+  }],
+  "outbounds": [{
+    "protocol": "freedom",
+    "settings": {},
+    "tag": "direct"
+  },{
+    "protocol": "blackhole",
+    "settings": {},
+    "tag": "blocked"
+  }],
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules":[
+      {
+        "type": "field",
+        "inboundTag": ["vmess-in"],
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
+        "outboundTag": "blocked",
+        "protocol": ["bittorrent"]
+      }
+    ]
+  },
+  "dns": {
+    "servers": [
+      "https://cloudflare-dns.com/dns-query",
+      "https://dns.google/dns-query"
+    ]
+  }
+}

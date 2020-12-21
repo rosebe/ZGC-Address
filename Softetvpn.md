@@ -1,13 +1,57 @@
-```sudo apt -y install cmake gcc g++ libncurses5-dev libreadline-dev libssl-dev make zlib1g-dev curl git net-tools lsof htop libsodium-dev build-essential```
+## Debian10系统下安装部署
+
+### 安装编译环境
+```
+sudo apt -y install cmake gcc g++ libncurses5-dev libreadline-dev libssl-dev make zlib1g-dev curl git net-tools lsof htop libsodium-dev build-essential
+```
+### 拉取Softether源码
 ```
 git clone https://github.com/SoftEtherVPN/SoftEtherVPN.git
 cd SoftEtherVPN
 git submodule init && git submodule update
-./configure --disable-documentation
-make -C tmp
-make -C tmp install
 ```
-```/lib/systemd/system/softether-vpnserver.service```
+#### 修改Cmakelist解决```libraries: libcedar.so: cannot open shared object file: No such file or directory```错误
+```
+vi CMakeLists.txt
+```
+-------------------------------------------------修改部分----------------------------------------------------------------
+#### 把内容
+```
+if(UNIX)
+  include(GNUInstallDirs)
+ 
+  include(CheckIncludeFile)
+  Check_Include_File(sys/auxv.h HAVE_SYS_AUXV)
+  if(EXISTS "/lib/systemd/system")
+    set(CMAKE_INSTALL_SYSTEMD_UNITDIR "/lib/systemd/system" CACHE STRING "Where to install systemd unit files")
+  endif()
+endif()
+```
+#### 变成
+```
+if(UNIX)
+  include(GNUInstallDirs)
+  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}")
+ 
+  include(CheckIncludeFile)
+  Check_Include_File(sys/auxv.h HAVE_SYS_AUXV)
+  if(EXISTS "/lib/systemd/system")
+    set(CMAKE_INSTALL_SYSTEMD_UNITDIR "/lib/systemd/system" CACHE STRING "Where to install systemd unit files")
+  endif()
+endif()
+```
+-----------------------------------------------------END----------------------------------------------------------------
+### 进行编译
+```
+./configure --disable-documentation
+make -C build
+sudo make -C build install
+```
+### 编辑Softether启动文件
+```
+/lib/systemd/system/softether-vpnserver.service
+```
+#### 添加部分内容
 ```
 [Unit]
 Description=SoftEther VPN Server
@@ -41,13 +85,17 @@ CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_BROADCAST CAP_N
 WantedBy=multi-user.target
 
 ```
-
+#### 激活启动项
+```
 sudo systemctl enable softether-vpnserver
+```
+### 安装dnsmasq作为dhcp分配
 ```
 sudo apt install dnsmasq
 sudo mv /etc/dnsmasq.conf /etc/dnsmasq.conf_bk
 sudo nano /etc/dnsmasq.conf
---------------------------------------------------------------------------
+
+-----------------------添加内容-----------------------------
 interface=tap_soft
 except-interface=ens3
 #port=0
@@ -88,9 +136,9 @@ log-async=5
 #log-dhcp
 #quiet-dhcp6
 #dhcp-option=3,192.168.30.1
--------------------------------------------------------------------------------------
+-------------------------END---------------------------
 ```
-/usr/local/iptables.sh
+### 编辑防火墙转发脚本```/usr/local/iptables.sh```
 ```
 #!/bin/bash
 /sbin/ifconfig tap_soft 192.168.30.1
@@ -102,14 +150,18 @@ iptables -A INPUT -s 192.168.30.0/24 -m state --state NEW -j ACCEPT
 iptables -A OUTPUT -s 192.168.30.0/24 -m state --state NEW -j ACCEPT
 iptables -A FORWARD -s 192.168.30.0/24 -m state --state NEW -j ACCEPT
 ```
-
+### 禁止dnsmasq开机启动，由softether控制
+```
 sudo systemctl disable dnsmasq
+```
+### 添加DOH
 ```
 wget -c https://bin.equinox.io/c/VdrWdbjqyF/cloudflared-stable-linux-amd64.tgz
 tar xf cloudflared-stable-linux-amd64.tgz
 
 curl https://bin.equinox.io/c/VdrWdbjqyF/cloudflared-stable-linux-amd64.tgz | sudo tar xzC /usr/local/bin/
 ```
+### 添加防火墙转发
 sudo apt install ufw && /etc/ufw/sysctl.conf
 ```
 # Uncomment this to allow this host to route packets between interfaces
@@ -133,21 +185,6 @@ sudo nano /etc/modules
 iptable_nat
 ip6table_nat
 ```
-```
-#/etc/sysctl.conf
-#```
-#net.core.default_qdisc=fq
-#net.ipv4.tcp_congestion_control=bbr
-
-#net.core.somaxconn=4096
-#net.ipv4.conf.all.send_redirects = 0
-#net.ipv4.conf.all.accept_redirects = 1
-#net.ipv4.conf.all.rp_filter = 1
-#net.ipv4.conf.default.send_redirects = 1
-#net.ipv4.conf.default.proxy_arp = 0
-#```
-```
-
 /etc/systemd/system/cloudflared.service
 ```
 [Unit]
@@ -158,7 +195,7 @@ Wants=nss-lookup.target
 
 [Service]
 User=cloudflared
-ExecStart=/usr/local/bin/cloudflared --no-autoupdate --logfile /var/log/cloudflared/cloudflared.log --config /usr/local/etc/cloudflared/config.yml
+ExecStart=/usr/local/bin/cloudflared --no-autoupdate --logfile /opt/cloudflared/cloudflared.log --config /opt/cloudflared/config.yml
 Restart=on-failure
 
 [Install]
@@ -243,6 +280,7 @@ LANGUAGE="zh_CN:zh"
 ```
 
 sudo reboot
+sudo ufw allow 67/udp
 
 
 
